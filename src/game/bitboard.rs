@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::result;
 
 use crate::game::u64_shift::U64Ext;
 use crate::{Board, game::utils::Player};
@@ -23,7 +23,7 @@ impl BitBoard {
     const BOTTOM_RIGHT_MV: u8 = 7;
 
     // hor_mask: horizontal mask
-    fn get(&self, hor_mask: u64, shift: u8, turn: Player) -> HashSet<Action> {
+    fn get(&self, hor_mask: u64, shift: u8, turn: Player) -> Vec<Action> {
         // vertical mask
         let v_mask = match turn {
             Player::South => Self::TOP,
@@ -32,7 +32,7 @@ impl BitBoard {
 
         // South
         let mut pcs = (!v_mask) & self.current & !hor_mask;
-        let mut mvs = HashSet::with_capacity(pcs.count_ones() as usize);
+        let mut mvs = Vec::with_capacity(pcs.count_ones() as usize);
 
         while pcs != 0 {
             let src = pcs.trailing_zeros() as u8;
@@ -62,45 +62,23 @@ impl BitBoard {
 
                 let kings = (promoted as u64) * tgt;
 
-                // let team = tgt;
-                // let bb = BitBoard::new(tgt, new_others, new_current);
-                // let bb = match turn {
-                //     Player::North => BitBoard::new(new_current | kings, new_others, new_current),
-                //     Player::South => BitBoard::new(new_others, new_current),
-                // };
-                // let result = bb.moves(turn);
-                // let result = bb.moves(turn);
+                let board = BitBoard::new(tgt, new_others, new_current);
+                let mut result = board.moves(turn);
+                (kings != 0).then(|| {
+                    let mut more = board.moves(!turn);
+                    result.reserve(more.len());
+                    result.append(&mut more);
+                });
+                let mut result = result.into_iter().filter(|x| x.capture).collect::<Vec<_>>();
 
-                let mut result = BitBoard::new(tgt, new_others, new_current).moves(turn);
-                if kings != 0 {
-                    let more = BitBoard::new(tgt, new_others, new_current).moves(!turn);
-                    result = &result | &more;
-                }
-                let result = result.into_iter().filter(|x| x.capture).collect();
-
-                // let board = match turn {
-                //     Player::North => Board::with(new_current, new_others, kings, turn, (0, 0)),
-                //     Player::South => Board::with(new_others, new_current, kings, turn, (0, 0)),
-                // };
-                // let result = board.options(turn);
-                // let result = result.into_iter().filter(|x| x.capture).collect();
-
-                // if this current pirce is a king, we need to be able to continue with that process here
-                // let board = match turn {
-                //     Player::North => Board::with(new_current, new_others, kings, turn, (0, 0)),
-                //     Player::South => Board::with(new_others, new_current, kings, turn, (0, 0)),
-                // };
-
-                // let result = board.options(turn);
-                // let result = result.into_iter().filter(|x| x.capture).collect();
-
-                mvs = &mvs | &result // combines both (hashset automatically helps us remove duplicates)
+                mvs.reserve(result.len());
+                mvs.append(&mut result);
             }
 
             let tgt = tgt.trailing_zeros() as u8;
 
             promoted = (tgt / 8) == ((turn as u8) * 7);
-            mvs.insert(Action {
+            mvs.push(Action {
                 src,
                 tgt,
                 capture,
@@ -111,13 +89,15 @@ impl BitBoard {
         mvs
     }
 
-    pub(crate) fn moves(&self, play_as: Player) -> HashSet<Action> {
-        let (mut left, right) = match play_as {
+    pub(crate) fn moves(&self, play_as: Player) -> Vec<Action> {
+        let (mut left, mut right) = match play_as {
             Player::South => (self.top_left(), self.top_right()),
             Player::North => (self.bottom_left(), self.bottom_right()),
         };
 
-        left = &left | &right;
+        // left = &left | &right;
+        left.reserve(right.len());
+        left.append(&mut right);
 
         left
     }
@@ -125,25 +105,24 @@ impl BitBoard {
     /// exclude the pieces already on column A (left column)
     /// exclude the pieces already on row 8 (top row)
     /// pieces that are safe to move top-left
-    fn top_left(&self) -> HashSet<Action> {
+    fn top_left(&self) -> Vec<Action> {
         self.get(Self::LEFT, Self::TOP_LEFT_MV, Player::South)
     }
 
     /// exclude the pieces already on column H (right column)
     /// exclude the pieces already on row 8 (top row)
-    fn top_right(&self) -> HashSet<Action> {
+    fn top_right(&self) -> Vec<Action> {
         self.get(Self::RIGHT, Self::TOP_RIGHT_MV, Player::South)
     }
 
-    fn bottom_right(&self) -> HashSet<Action> {
+    fn bottom_right(&self) -> Vec<Action> {
         self.get(Self::RIGHT, Self::BOTTOM_RIGHT_MV, Player::North)
     }
 
     /// exclude the pieces already on column A (left column)
     /// exclude the pieces already on row 1 (bottom row)
-    pub(crate) fn bottom_left(&self) -> HashSet<Action> {
+    pub(crate) fn bottom_left(&self) -> Vec<Action> {
         self.get(Self::LEFT, Self::BOTTOM_LEFT_MV, Player::North)
-        // vec![]
     }
 
     pub(super) fn new(current: u64, other: u64, team: u64) -> Self {

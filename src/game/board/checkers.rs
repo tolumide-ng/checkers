@@ -1,4 +1,4 @@
-use std::{collections::HashSet, fmt::Display, ops::Index};
+use std::{fmt::Display, ops::Index};
 
 use crate::game::{action::Action, bitboard::BitBoard, utils::Player};
 
@@ -74,11 +74,10 @@ impl Board {
 
         let opponent = self[!turn];
         let mut natural_mvs = BitBoard::from((regulars | kings, opponent, 0)).moves(turn);
-        let king_mvs = BitBoard::from((kings, opponent, regulars)).moves(!turn); // extra king moves
+        let mut king_mvs = BitBoard::from((kings, opponent, regulars)).moves(!turn); // extra king moves
 
-        // natural_mvs.reserve(king_mvs.len());
-        // natural_mvs.append(&mut king_mvs);
-        natural_mvs = &natural_mvs | &king_mvs;
+        natural_mvs.reserve(king_mvs.len());
+        natural_mvs.append(&mut king_mvs);
 
         natural_mvs.into_iter().collect()
     }
