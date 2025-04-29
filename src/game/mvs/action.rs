@@ -1,9 +1,9 @@
-use std::{fmt::Display, rc::Rc};
+use std::fmt::Display;
 
 use crate::mcts::traits::Action as MctsAction;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub(crate) struct Action {
+pub struct Action {
     pub(crate) src: u8,
     pub(crate) tgt: u8,
     pub(crate) capture: bool,
