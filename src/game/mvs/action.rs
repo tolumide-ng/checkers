@@ -1,7 +1,5 @@
 use std::fmt::Display;
 
-use crate::mcts::traits::Action as MctsAction;
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Action {
     pub(crate) src: u8,
@@ -35,8 +33,6 @@ impl Action {
         }
     }
 }
-
-impl MctsAction for Action {}
 
 impl Display for Action {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

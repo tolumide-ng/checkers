@@ -9,3 +9,4 @@ Nothing serious here 👀
 ### Todo
 - Wasm build
 - GitHub Ci
+- Remove/Minimize the unnecessary use of `clone` across the application

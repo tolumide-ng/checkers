@@ -1,8 +1,15 @@
 use std::{fmt::Display, ops::Index};
 
-use crate::game::{action::Action, bitboard::BitBoard, utils::Player};
+use crate::{
+    game::{
+        bitboard::BitBoard,
+        mvs::{action::Action, path::ActionList},
+        utils::Player,
+    },
+    mcts::traits::MctsAction,
+};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct Board {
     /// white pieces and white kings
     pub(crate) north: u64,
@@ -76,81 +83,83 @@ impl Board {
         let mut mvs = board.moves(turn);
         if is_king {
             let more_mvs = board.moves(!turn);
-            mvs = &mvs | &more_mvs
+            mvs.reserve(more_mvs.len());
+            mvs.extend(more_mvs);
         }
 
-        mvs.contains(&mv)
+        mvs.contains(&mv.into())
     }
 
     /// returns all the possible options a selected piece can play
-    /// Vec<(from, to, capture)>
-    /// TODO!!!! ->>>> SHOULD THIS RETURN A VEC<VEC<ACTION>> INSTEAD???? TO HANDLE JUMPING MOVES LOGIC???
-    pub(crate) fn options(&self, turn: Player) -> Vec<Action> {
-        // println!("ORIGINATING FROM HERE ((((((((((((((((((-----)))))))))))))))))) \n{self}");
+    pub(crate) fn options(&self, turn: Player) -> Vec<ActionList> {
         let regulars = self.regular(turn);
         let kings = self.kings(turn);
 
         let opponent = self[!turn];
-        // println!(
-        //     "about to search the natural moves-------------------->>>>>>>>>>>::::::::::*****---"
-        // );
         let mut natural_mvs = BitBoard::from((regulars | kings, opponent, 0)).moves(turn);
         let king_mvs = BitBoard::from((kings, opponent, regulars)).moves(!turn); // extra king moves
-        natural_mvs = &natural_mvs | &king_mvs;
 
-        natural_mvs.into_iter().collect()
+        natural_mvs.reserve(king_mvs.len());
+        natural_mvs.extend(king_mvs);
+        natural_mvs
     }
 
-    pub(crate) fn play_jumping(&self, mvs: Vec<Action>) -> Option<Self> {
-        // let
-        // mvs.reverse();
+    pub(crate) fn play(&self, mvs: &ActionList) -> Option<Self> {
+        let mut board = *self;
 
-        None
-    }
+        for mv in mvs.clone() {
+            let Action {
+                src,
+                tgt,
+                capture,
+                promoted,
+            } = mv;
 
-    pub(crate) fn play(&self, mv: Action) -> Option<Self> {
-        if !self.is_valid(mv, self.turn) {
-            return None;
+            if !self.is_valid(mv, self.turn) {
+                return None;
+            }
+
+            let (north, south, kings, qmvs) = match board.turn {
+                Player::North => {
+                    // if the piece is a moving king, we ensure that they remain king no-matter where they move, by updating there position on king bin
+                    let kings =
+                        board.kings ^ (((board.kings >> src) & 1) * ((1 << src) | (1 << tgt)));
+                    let north = (board.north & !(1 << src)) | 1 << tgt; // we remove the piece from src (and then add it to the target (|...))
+                    let south = board.south & !((capture as u64) << tgt);
+
+                    let kings = kings | ((promoted as u64) << tgt);
+
+                    let cp = !(capture) as u8;
+                    let qmvs = ((board.qmvs.0 + 1) * cp, board.qmvs.1 * cp);
+
+                    (north, south, kings, qmvs)
+                }
+                Player::South => {
+                    let kings =
+                        board.kings ^ (((board.kings >> src) & 1) * ((1 << src) | (1 << tgt)));
+                    let south = (board.south & !(1 << src)) | 1 << tgt;
+                    let north = board.north & !((capture as u64) << tgt);
+
+                    let kings = kings | ((promoted as u64) << tgt);
+
+                    let cp = (!capture) as u8;
+                    let qmvs = (board.qmvs.0 * cp, (board.qmvs.1 + 1) * cp);
+
+                    (north, south, kings, qmvs)
+                }
+            };
+
+            board = Self {
+                north,
+                south,
+                kings,
+                qmvs,
+                ..board
+            };
         }
-        let Action {
-            src, tgt, capture, ..
-        } = mv;
 
-        let (north, south, kings, qmvs) = match self.turn {
-            Player::North => {
-                // if the piece is a moving king, we ensure that they remain king no-matter where they move, by updating there position on king bin
-                let kings = self.kings ^ (((self.kings >> src) & 1) * ((1 << src) | (1 << tgt)));
-                let north = (self.north & !(1 << src)) | 1 << tgt; // we remove the piece from src (and then add it to the target (|...))
-                let south = self.south & !((capture as u64) << tgt);
-
-                let kings = kings | ((mv.promoted as u64) << tgt);
-
-                let cp = !(mv.capture) as u8;
-                let qmvs = ((self.qmvs.0 + 1) * cp, self.qmvs.1 * cp);
-
-                (north, south, kings, qmvs)
-            }
-            Player::South => {
-                let kings = self.kings ^ (((self.kings >> src) & 1) * ((1 << src) | (1 << tgt)));
-                let south = (self.south & !(1 << src)) | 1 << tgt;
-                let north = self.north & !((capture as u64) << tgt);
-
-                let kings = kings | ((mv.promoted as u64) << tgt);
-
-                let cp = (!mv.capture) as u8;
-                let qmvs = (self.qmvs.0 * cp, (self.qmvs.1 + 1) * cp);
-
-                (north, south, kings, qmvs)
-            }
-        };
-
-        return Some(Self {
-            north,
-            south,
-            kings,
-            turn: !self.turn,
-            qmvs,
-        });
+        board.turn = !board.turn;
+        Some(board)
     }
 }
 

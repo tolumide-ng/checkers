@@ -1,20 +1,25 @@
 use std::ptr::{null, null_mut};
 
-use super::action::Action;
+use crate::game::mvs::action::Action;
+use crate::mcts::traits::MctsAction;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct MvPath {
     pub(crate) mv: Action,
     pub(crate) next: Option<Box<MvPath>>,
 }
 
+impl MctsAction for MvPath {}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct ActionList {
     pub(crate) head: Option<Box<MvPath>>,
     pub(crate) tail: *mut MvPath,
     pub(crate) len: usize,
-    /// Used only internally for tracking the state of the iterator
-    curr: *const MvPath,
+    pub(crate) curr: *const MvPath,
 }
+
+impl MctsAction for ActionList {}
 
 impl ActionList {
     pub(crate) fn new() -> Self {
@@ -24,6 +29,15 @@ impl ActionList {
             len: 0,
             curr: null(),
         }
+    }
+
+    pub(crate) fn prepend(&mut self, mv: Action) {
+        let next = self.head.take();
+        let head = Box::new(MvPath { mv, next });
+
+        self.curr = &*head;
+        self.head = Some(head);
+        self.len += 1;
     }
 
     pub(crate) fn append(&mut self, mv: Action) {
@@ -92,14 +106,15 @@ impl Iterator for ActionList {
         }
 
         let curr = unsafe { &(*self.curr).next };
-        let MvPath { mv, .. } = unsafe { self.curr.read() };
+        let MvPath { mv, .. } = unsafe { &*self.curr };
+
         if let Some(new_curr) = curr {
             self.curr = &(*new_curr.as_ref());
         } else {
             self.curr = null()
         }
 
-        return Some(mv);
+        return Some(*mv);
     }
 }
 
@@ -111,6 +126,14 @@ impl From<ActionList> for Vec<Action> {
             list.push(action);
         }
 
+        list
+    }
+}
+
+impl From<Action> for ActionList {
+    fn from(value: Action) -> Self {
+        let mut list = Self::new();
+        list.append(value);
         list
     }
 }

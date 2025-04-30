@@ -3,9 +3,9 @@ use crate::{
     mcts::{algo::state::State, utils::reward::Reward},
 };
 
-use super::{action::Action, utils::AppError};
+use super::{mvs::path::ActionList, utils::AppError};
 
-impl State<Action, Player, AppError> for Board {
+impl State<ActionList, Player, AppError> for Board {
     fn is_terminal(&self) -> bool {
         self.get_reward() != Reward::Continue
     }
@@ -33,9 +33,9 @@ impl State<Action, Player, AppError> for Board {
         Reward::Continue
     }
 
-    fn apply_action(&self, action: &Action) -> Result<(Self, Player), AppError> {
+    fn apply_action(&self, action: &ActionList) -> Result<(Self, Player), AppError> {
         // let mut board = self.clone();
-        let Some(state) = self.play(*action) else {
+        let Some(state) = self.play(action) else {
             return Err(AppError::IllegalMove);
         };
 
@@ -50,19 +50,9 @@ impl State<Action, Player, AppError> for Board {
         self.to_string()
     }
 
-    /// WHY AM I HANDLING THIS HERE: preamble: I just wasted one hour trying to debug something that isn't even an issue in the first place 🤦🏾‍♂️
-    /// Why????
-    /// The options generation would always return all the possible moves for the current state of the board
-    /// for e.g if a move include A -> B -> C -> D (which means we should have [(a, b), (b, c), (c, d)]
-    /// the dumb mcts I wrote here doesn't know this, and would randomly select any of the moves, without understanding that there should be an order
-    /// which would result in an invalid game because there is probably no piece beloning to this user at (target b), that would be moved to c in the first place.
-    /// So, what this does is that it ensures only the originating moves of jumps moves are provided as possible actions in the first place
-    /// NOTE: THIS IS STUPID AND NEEDS TO BE UPDATED;
-    /// WHY???? COMPUTER CANNOT CURRENTLY PLAY JUMPING MOVES, WE NEED IT TO BE ABLE TO DO THAT!!
-    fn get_actions(&self) -> Vec<Action> {
+    fn get_actions(&self) -> Vec<ActionList> {
         self.options(self.turn)
-            .into_iter()
-            .filter(|a| self.is_valid(*a, self.turn))
-            .collect::<Vec<_>>()
     }
+
+    // fn get_actions(&self) -> Vec<A>;
 }

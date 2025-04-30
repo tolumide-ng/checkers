@@ -2,12 +2,8 @@ use core::f64;
 use std::{cell::RefCell, rc::Rc, time::Instant};
 
 use crate::mcts::{
-    traits::{Action, MCTSError, Player},
-    utils::{
-        limit::Limit,
-        rand::{genrand, getrand},
-        skill_level::SkillLevel,
-    },
+    traits::{MCTSError, MctsAction, Player},
+    utils::{limit::Limit, rand::genrand, skill_level::SkillLevel},
 };
 
 use super::{node::Node, state::State};
@@ -15,7 +11,7 @@ use super::{node::Node, state::State};
 pub(crate) struct MCTS<S, A, P, E>
 where
     S: State<A, P, E>,
-    A: Action,
+    A: MctsAction,
     P: Player,
     E: MCTSError,
 {
@@ -29,7 +25,7 @@ where
 impl<S, A, P, E> MCTS<S, A, P, E>
 where
     S: State<A, P, E>,
-    A: Action,
+    A: MctsAction,
     P: Player,
     E: MCTSError,
 {
@@ -59,12 +55,12 @@ where
     /// Choose a random action. Heuristics can be used to improved simulations
     pub fn choose(&self, actions: Vec<A>) -> A {
         if actions.len() == 1 {
-            return actions[0];
+            return actions[0].clone();
         }
 
         let index = genrand(0, actions.len());
 
-        actions[index]
+        actions[index].clone()
     }
 
     /// Sim,ulate until a terminal state
@@ -154,7 +150,7 @@ where
         let index = genrand(0, best_children.len());
         let child = &best_children[index];
 
-        child.borrow().get_action().unwrap()
+        child.borrow().get_action().clone().unwrap()
     }
 
     /// Gets a very competitive player that blocks the other player's succcess
@@ -191,6 +187,6 @@ where
             child = Some(&best_children[genrand(0, best_children.len())]);
         }
 
-        child.unwrap().borrow().get_action().unwrap()
+        child.unwrap().borrow().get_action().clone().unwrap()
     }
 }

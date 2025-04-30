@@ -4,17 +4,14 @@ use std::{
 };
 
 use crate::mcts::{
-    traits::{Action, MCTSError, Player},
-    utils::{
-        rand::{genrand, getrand},
-        reward::Reward,
-    },
+    traits::{MCTSError, MctsAction, Player},
+    utils::{rand::genrand, reward::Reward},
 };
 
 use super::{bandit::MultiArmedBandit, state::State};
 
 type Parent<S, A, P, E> = Option<Weak<RefCell<Node<S, A, P, E>>>>;
-pub struct Node<S: State<A, P, E>, A: Action, P: Player, E: MCTSError> {
+pub struct Node<S: State<A, P, E>, A: MctsAction, P: Player, E: MCTSError> {
     parent: Parent<S, A, P, E>,
     pub(crate) visits: f64,
     pub(crate) children: Vec<Rc<RefCell<Node<S, A, P, E>>>>,
@@ -30,7 +27,7 @@ pub struct Node<S: State<A, P, E>, A: Action, P: Player, E: MCTSError> {
 impl<S, A, P, E> MultiArmedBandit for Node<S, A, P, E>
 where
     S: State<A, P, E>,
-    A: Action,
+    A: MctsAction,
     P: Player,
     E: MCTSError,
 {
@@ -39,7 +36,7 @@ where
 impl<S, A, P, E> Node<S, A, P, E>
 where
     S: State<A, P, E>,
-    A: Action,
+    A: MctsAction,
     P: Player,
     E: MCTSError,
 {
@@ -136,7 +133,7 @@ where
         let expanded_children = self
             .children
             .iter()
-            .filter_map(|c| c.as_ref().borrow().action)
+            .filter_map(|c| c.as_ref().borrow().action.clone())
             .collect::<Vec<_>>();
 
         // println!(
@@ -200,7 +197,7 @@ where
             let index = genrand(0, actions.len());
             let action = &actions[index];
 
-            let child = self.get_outcome_child(*action);
+            let child = self.get_outcome_child(action.clone());
             return child;
         }
 

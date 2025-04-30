@@ -2,7 +2,7 @@ use core::f64;
 use std::{cell::RefCell, rc::Rc};
 
 use crate::mcts::{
-    traits::{Action, MCTSError, Player},
+    traits::{MCTSError, MctsAction, Player},
     utils::rand::{genrand, getrand},
 };
 
@@ -13,7 +13,7 @@ pub(crate) trait MultiArmedBandit {
     /// This method helps us calculate the best child of this node to exploit further
     /// Selects an action for the state from a list given a Q-function(???) (https://gibberblot.github.io/rl-notes/single-agent/multi-armed-bandits.html#id9)
     /// this can be: Softmax strategy, UCB1 e.t.c
-    fn mdp_select<S: State<A, P, E>, A: Action, P: Player, E: MCTSError>(
+    fn mdp_select<S: State<A, P, E>, A: MctsAction, P: Player, E: MCTSError>(
         node: &Node<S, A, P, E>,
         constant: f64,
     ) -> Rc<RefCell<Node<S, A, P, E>>> {

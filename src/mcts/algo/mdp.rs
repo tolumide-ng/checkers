@@ -1,4 +1,4 @@
-use crate::mcts::traits::{Action, MCTSError, Player};
+use crate::mcts::traits::{MCTSError, MctsAction, Player};
 
 use super::state::State;
 
@@ -8,7 +8,7 @@ pub trait MDP {
     fn get_reward<S, A, P, E>(&self, action: A, next_state: S) -> Option<i64>
     where
         S: State<A, P, E>,
-        A: Action,
+        A: MctsAction,
         P: Player,
         E: MCTSError;
 }

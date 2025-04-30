@@ -5,7 +5,7 @@ use mcts::{
 };
 
 pub(crate) mod game;
-pub(crate) mod mcts; // should this be moved into a separate workspace?
+pub mod mcts; // should this be moved into a separate workspace?
 
 fn main() {
     for i in 0..6 {
@@ -27,8 +27,8 @@ fn main() {
 
             let mv = mcts.run();
 
-            println!("playing {}", mv.to_string());
-            board = board.play(mv).unwrap();
+            // println!("playing {:?}", Vec::from(mv));
+            board = board.play(&mv).unwrap();
 
             println!("{board}");
         }
