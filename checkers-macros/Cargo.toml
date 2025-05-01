@@ -1,0 +1,9 @@
+[package]
+name = "checkers-macros"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+syn = { version = "2.0.101", features = ["full"] }
+quote = "1.0.40"
+proc-macro2 = {version = "1.0.95", default-features = false}
